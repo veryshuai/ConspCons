@@ -12,9 +12,10 @@ mainspread = dlmread('MainSpread.csv',',',1,2);
 %Categorizing all the things:
 
 %cons: each row is an observation, and expenditures in the 29 categories 
-%cons order: FdH, FdO, Cig, AlH, AlO, Clo, Lry, Jwl, Brb, Hom, Htl, Fur,
-%Utl, Tel, HIn, Med, Fee, LIn, Car, CMn, Gas, CIn, Bus, Air, Bks, Ot1, Ot2,
-%Edu, Cha
+%cons order: 1.FdH, 2.FdO, 3.Cig, 4.AlH, 5.AlO, 6.Clo, 7.Lry, 8.Jwl, 9.Brb,
+%10.Hom, 11.Htl, 12.Fur, 13.Utl, 14.Tel, 15.HIn, 16.Med, 17.Fee, 18.LIn, 
+%19.Car, 20.CMn, 21.Gas, 22.CIn, 23.Bus, 24.Air, 25.Bks, 26.Ot1, 27.Ot2,
+%28.Edu, 29.Cha
 
 ind = 33;
 cons = [consdat(:,ind+2),...
@@ -47,12 +48,25 @@ cons = [consdat(:,ind+2),...
     consdat(:,ind+44)+consdat(:,ind+45)+consdat(:,ind+46),...
     consdat(:,ind+47)];
 
+%family characteristics: [totwt,adjwt,over50,black,married,male,year]
+%(WARNING: NEED TO CONFIRM THAT OVER50 IS ACTUALLY OVER40.  I THINK IT IS
+%(I CHANGED THE COMPILATION PROGRAM)
+char = [consdat(:,5),consdat(:,6),consdat(:,end-5:end-1)];
+
+%sort mainspread
+order = [9;6;3;8;19;2;26;1;28;30;5;4;12;27;25;20;10;11;23;24;21;14;29;7;13;16;17;22;15;18;31];
+mainspread_sort = sortrows([order,mainspread],1);
+mainspread_sort = mainspread_sort(:,2:end);
+
 %price: same order as cons
-price = [mainspread(1:6,5:end-2);mainspread(8:15,5:end-2);mainspread(17:end,5:end-2)]';
+price = mainspread_sort(1:29,5:end-2)';
 
-%visibility indexes: column ordr the same, row order: Not black under 40, Not black over 40, Black under 40, Black over 40;
-vin = [mainspread(1:6,1:4);mainspread(8:15,1:4);mainspread(17:end,1:4)]';
+%visibility indexes: column ordr the same, row order: Not black under 40,
+%Not black over 40, Black under 40, Black over 40
+vin = mainspread_sort(1:29,1:4)';
  
-clearvars -except cons price vin
+clearvars -except cons price vin char
 
-save '/gpfs/home/dcj138/work/ConspCons/dat' 
+cd '/gpfs/home/dcj138/work/ConspCons/'
+
+save dat
