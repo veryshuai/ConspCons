@@ -1,33 +1,30 @@
-function [u,foc] = util_FOC(p,input,g,alp,v,w,expend)
+function [u,foc] = util_FOC(p,c,g,alp,v,w)
 %function [u,foc,hessian] = util_FOC(p,input,g,alp,v,w,expend)
 %calculates utility FOC for parameter vector p, consumption vector c,
 %equilibrium consumption matrix g:exp->cons, consp cons weight alp, and 
 %shock std dev vector v, and weath density w
 
-c = exp(input(1:29));
+%c = exp(input(1:29));
+c = c';
 %sp = input(30);
 
-u = util(p,c,g,alp,v,w);
+[u,guv,w_prob,dnsobj] = util(p,c,g,alp,v,w);
 
 %fundamental utility grad
 fu = (bsxfun(@times,p(:,1)',1./bsxfun(@plus,p(:,2)',c')))';
 
 %equilibrium expenditure-utility vector
-guv = sum(bsxfun(@times,p(:,1)',log(bsxfun(@plus,p(:,2)',g))),2);
+%guv = sum(bsxfun(@times,p(:,1)',log(bsxfun(@plus,p(:,2)',g))),2);
 
 %likelihood vector for each wealth level
 dm = ones(size(g,1),size(g,2));
-dnsobj = bsxfun(@minus,g,c');
-jac_dm = ones(size(g,2),size(g,2),size(g,1));
+%dnsobj = bsxfun(@minus,g,c');
+%jac_dm = ones(size(g,2),size(g,2),size(g,1));
 
+w_product = prod(w_prob,2);
 for m = 1:29
    dm(:,m) = -1/(2*pi*v(m)^2)*(dnsobj(:,m)/(v(m)^2)).*exp(-dnsobj(:,m).^2/(2*v(m)^2));
-   k = 1;
-while k <30 && k~=m 
-   temp = normpdf(dnsobj(:,k),0,v(k)); 
-   dm(:,m) = temp.*dm(:,m);
-   k = k+1;
-end
+   dm(:,m) = dm(:,m).*w_product./w_prob(:,m); 
 end
 dens = bsxfun(@times,dm,w);
 
@@ -60,6 +57,6 @@ foc = (1-alp)*fu+alp*ex;
 
 % hessian = [[(1-alp)*bsxfun(@times,eye(29),-fu./bsxfun(@plus,p(:,2),c))+alp*sum(jac_dens,3);-ones(1,29)],[-ones(29,1);0]];
 u = -u;
-%foc = -foc;
+foc = -foc;
 
 end

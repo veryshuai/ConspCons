@@ -6,53 +6,121 @@ cd '/gpfs/home/dcj138/work/ConspCons/'
 
 load dat
 
-price = price_fixing(price); %linearly extend prices to cover zeros
+%open parallel functionality
+matlabpool open 6
+
+%open diary
+diary 1-12-12-1.txt
+
+%linearly extend prices to cover zeros and include only relevant price years
+price = price_fixing(price); 
+price = price([1,7:12,14:24],:);
+
 
 %create total expenditures
 exp = sum(cons,2);
 
-c = dataset(cons,char,exp);
+c = dataset(exp,cons,char);
+
 %drop obs if expenditure less than one dollar/yr
-ind = find(exp>0);
+ind = find(exp>1);
+less_than_ones = size(exp,1) - size(ind,1);
 c = c(ind,:);
+
 %drop obs if any good has negative expenditure
+neg_exps = 0;
 for k = 1:29
 ind = find(c.cons(:,k)>=0);
 c = c(ind,:);
+neg_exps = neg_exps + size(c.cons(:,k),1)-size(ind,1);
+end
+display(['Lost ', num2str(less_than_ones), ' expenditures less than one dollar, and further lost ', num2str(neg_exps),' negative expenditure observations']); 
+
+%create year numbers
+c.y = zeros(size(c.exp));
+c.y(c.char(:,7)==80) = 1;
+for k = 2:7
+    c.y(c.char(:,7)==84+k) = k;
+end
+for k = 8:14
+    c.y(c.char(:,7)==85+k) = k;
+end
+for k = 15:18
+    c.y(c.char(:,7)==k-15) = k;
 end
 
-egr = linspace(1,max(c.exp),1e4);
-
-%for now I pool years and do the wealth dist calculation
-w = histc(c.exp,egr)+1e-6;
-w = w/sum(w); %make it a dist
-
-%v is literally the inverse of the vindex, using whites under40
-v = vin(1,:).^-1;
-
-%as an initial value, use the simple stone geary demand system
-param1 = ones(29,1);
-param2 = ones(29,1);
-sgd = bsxfun(@plus,-param2',bsxfun(@times,param1'./price(1,:),egr'+sum(param2.*price(1,:)'))/sum(param2));
-sgd(sgd<0) = 0; %corner
-
-%for now let the unconstrained thang be the social guess.
-g = sgd;
-
-%now lets add optimization given prices.  to do this I need to figure out
-%the first order condions given g.
-
-options=optimset('Display','iter','jacobian','on','TolFun',1e-6,'TolX',1e-8,'DerivativeCheck','off',...
-    'GradObj','on');
-
-c_mat = zeros(size(g));
-c_mat(1,:) = ktrlink(@(x) util_FOC(ones(29,2),x,g,.5,v,w,1),log(ones(29,1)/29),[],[],ones(1,29),egr(1),[],[],[],options);
-%c_mat(1,:) = ktrlink(@(x) -util_FOC(ones(29,2),x,g,.5,v,w,1),[log(ones(29,1)/29);1],[],[],[],[],[],[],[],options);
-for k = 2:size(egr,2)
-    c_mat(k,:) = ktrlink(@(x) util_FOC(ones(29,2),x,g,.5,v,w,egr(k)),c_mat(k-1,:)',[],[],ones(1,29),egr(1),[],[],[],options);
+% create expenditure grid by year [year,grid]
+w_b = zeros(2,18);
+egr = zeros(18,1e1);
+for k = 1:18
+w_b(:,k) = quantile(c.exp(c.y==k),[.1;.9]);
+egr(k,:) = linspace(w_b(1,k),w_b(2,k),1e1);
 end
-c_mat = exp(c_mat);
 
+%create type indices
+ti = zeros(size(c,1),4);
+ti(:,1) = c.char(:,3)==1 & c.char(:,4) == 1; %bo4
+ti(:,2) = c.char(:,3)==1 & c.char(:,4) == 0; %no4
+ti(:,3) = c.char(:,3)==0 & c.char(:,4) == 1; %bu4
+ti(:,4) = c.char(:,3)==0 & c.char(:,4) == 0; %nu4
+
+%make a type variable
+c.type = ti(:,1)+2*ti(:,2) +3*ti(:,3)+4*ti(:,4); 
+
+%create two dimensional consumption array with dimensions year, type, and element expenditure level
+c = sortrows(c,{'exp'});
+ca = cell(18,4);
+for k = 1:18
+    for m = 1:4
+       ind = find(c.y==k & c.type==m);
+        ca{k,m} = c.cons(ind,:);
+        ce{k,m} = c.exp(ind);
+    end
+end
+
+% find the cutoff observations in data, this is going to be a two dimensional array [year,type]
+% and the elements will be the cuts 
+egr_cuts = cell(18,4);
+for k = 1:18
+    for m = 1:4
+        egr_cuts{k,m} = zeros(size(egr,2),1);
+        for j=1:size(egr,2)
+            egr_cuts{k,m}(j) = find(ce{k,m}>egr(k,j),1,'first');
+        end
+    end
+end
+
+%wealth dist calculations, matrix [density,year,type]
+w = zeros(size(egr,2),18,4);
+for j = 1:18
+    for k = 1:4  
+        w(:,j,k) = histc(c.exp(c.y==j & ti(:,k)),egr(j,:))+1e-6; %added a bit to ensure that there are no zeros (full support)
+        w(:,j,k) = w(:,j,k)/sum(w(:,j,k),1); %make it a dist
+    end
+end
+
+%v is literally the inverse of the vindex, using whites under40, the 7 just
+%seemed to work fairly well...eventually i might want to think about
+%searching fver this paramter
+v = zeros(4,29);
+for k = 1:4
+    v(k,:) = vin(k,:).^-1*(egr(1,2)-egr(1,1))*2;
+end
+
+%call genetic algorithm
+
+pop = [];
+
+options=gaoptimset('Display','iter','PopulationSize',18,'Generations',150,... 
+   'StallTimeLimit',86400,'TimeLimit',Inf,'MutationFcn',@mutationadaptfeasible,...
+   'FitnessScalingFcn',@fitscalingrank,'InitialPopulation',pop,'UseParallel','always',...
+   'PlotFcns',@gaplotbestf,'EliteCount',0);
+
+    [X,fval,exitflag,output,population,scores] = ga(@(X) likelihood(X,price,egr,v,w,ca,egr_cuts),59,...
+    [],[],[],[],[ones(1,58)*1e-4,0],[ones(1,58)*inf,1],[],options);  
+
+matlabpool close
+diary close
 
 
 
