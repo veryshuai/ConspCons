@@ -10,7 +10,7 @@ load dat
 matlabpool open 6
 
 %open diary
-diary 1-26-12-1.txt
+diary 1-27-12-3.txt
 
 %linearly extend prices to cover zeros and include only relevant price years
 price = price_fixing(price); 
@@ -50,7 +50,7 @@ for k = 15:18
 end
 
 % create expenditure grid by year [year,grid]
-gr_siz = 1e1;
+gr_siz = 10;
 w_b = zeros(2,18);
 egr = zeros(18,gr_siz);
 for k = 1:18
@@ -114,13 +114,13 @@ pop = [];
 options=gaoptimset('Display','iter','PopulationSize',18,'Generations',150,... 
    'StallTimeLimit',86400,'TimeLimit',Inf,'MutationFcn',@mutationadaptfeasible,...
    'FitnessScalingFcn',@fitscalingrank,'InitialPopulation',pop,'UseParallel','always',...
-   'PlotFcns',@gaplotbestf,'EliteCount',0);
+   'PlotFcns',@gaplotbestf,'EliteCount',1);
 
     [X,fval,exitflag,output,population,scores] = ga(@(X) likelihood(X,price,egr,v,w,ca,egr_cuts),60,...
-    [],[],[],[],[ones(1,58)*1e-4,0,1e2],[ones(1,58)*inf,1,1e4],[],options);  
+    [],[],[],[],[ones(1,29)*1e-12,ones(1,29)*1,0,1e2],[ones(1,29)*2,ones(1,29)*2000,1,1e4],[],options);  
 
 matlabpool close
-diary close
+diary off
 
 
 
