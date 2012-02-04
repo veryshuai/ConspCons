@@ -23,10 +23,10 @@ dm = ones(size(g,1),size(g,2));
 
 w_product = prod(w_prob,2);
 for m = 1:29
-   dm(:,m) = -1/(2*pi*v(m)^2)*(dnsobj(:,m)/(v(m)^2)).*exp(-dnsobj(:,m).^2/(2*v(m)^2));
+   dm(:,m) = 1/(2*pi*v(m)^2)*(dnsobj(:,m)/(v(m)^2)).*exp(-dnsobj(:,m).^2/(2*v(m)^2));
    dm(:,m) = dm(:,m).*w_product./w_prob(:,m); 
 end
-dens = bsxfun(@times,dm,w);
+dens = bsxfun(@times,dm,w)/sum(w_product.*w);
 
 % for m = 1:29
 %     for l = 1:m
