@@ -1,6 +1,6 @@
 function r = resid(mc,ac,egc)
-%This function takes model consumption, actual consumption, and actual
-%expenditure and expenditure grid cutoffs and returns a likelihood
+%This function takes model expenditures, actual expenditures, and actual
+%wealth grid cutoffs and returns a likelihood
 
 %make a big model consumption grid (note that we leave out the really rich
 %guys...we don't consider them below anyway)

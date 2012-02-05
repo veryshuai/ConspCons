@@ -12,7 +12,7 @@ load dat
 matlabpool open 6
 
 %open diary
-diary 2-4-12-sgd.txt
+diary 2-4-12-sgd-1.txt
 
 %linearly extend prices to cover zeros and include only relevant price years
 price = price_fixing(price); 
@@ -51,7 +51,7 @@ for k = 15:18
 end
 
 % create expenditure grid by year [year,grid]
-gr_siz = 30;
+gr_siz = 100;
 w_b = zeros(2,18);
 egr = zeros(18,gr_siz);
 for k = 1:18
