@@ -9,10 +9,10 @@ warning off all;
 load dat
 
 %open parallel functionality
-matlabpool open 6
+%matlabpool open 6
 
 %open diary
-diary 2-4-12-sgd-1.txt
+%diary 2-4-12-sgd-1.txt
 
 %linearly extend prices to cover zeros and include only relevant price years
 price = price_fixing(price); 

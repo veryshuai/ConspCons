@@ -195,6 +195,6 @@ display(r);
 %toc
 
 %diary off
-diary 2-4-12-sgd-1.txt
+%diary 2-4-12-sgd-1.txt
 
 end

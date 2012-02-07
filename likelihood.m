@@ -19,28 +19,28 @@ vm = X(60); %v multiplier
 
 v = v*vm; %scale v by the multiplier
 
-%get "naive" initial value
-init = zeros(size(egr,2),29,size(egr,1));
-for k = 1:18
-init(:,:,k) = bsxfun(@plus,-param2,bsxfun(@times,param1/sum(param1)./price(k,:)',(egr(k,:)'+sum(param2.*price(k,:)'))'))';
-end
-init(init<=0) = 0; %corner
-for k = 1:18
-    init(:,:,k) = bsxfun(@times,egr(k,:)',bsxfun(@rdivide,init(:,:,k),sum(bsxfun(@times,price(k,:),init(:,:,k)),2)));
-end 
-
-sgd = zeros(size(egr,2),29,size(egr,1));
-for j = 1:size(egr,2)
-    for m = 1:18
-        sgd(j,:,m) = fmincon(@(x) util_FOC_sgd([param1,param2],x,init(j,:,m),0,v(1,:),w(:,m,1)),init(j,:,m),[],[],price(m,:),egr(m,j),zeros(29,1),[],[],options);
-    end
-end
-
-%let the initial guess be the sgd.
-g = zeros(size(sgd,1),size(sgd,2),size(sgd,3),4);
-for k = 1:4
-    g(:,:,:,k) = sgd;
-end
+% %get "naive" initial value
+% init = zeros(size(egr,2),29,size(egr,1));
+% for k = 1:18
+% init(:,:,k) = bsxfun(@plus,-param2,bsxfun(@times,param1/sum(param1)./price(k,:)',(egr(k,:)'+sum(param2.*price(k,:)'))'))';
+% end
+% init(init<=0) = 0; %corner
+% for k = 1:18
+%     init(:,:,k) = bsxfun(@times,egr(k,:)',bsxfun(@rdivide,init(:,:,k),sum(bsxfun(@times,price(k,:),init(:,:,k)),2)));
+% end 
+% 
+% sgd = zeros(size(egr,2),29,size(egr,1));
+% for j = 1:size(egr,2)
+%     for m = 1:18
+%         sgd(j,:,m) = fmincon(@(x) util_FOC_sgd([param1,param2],x,init(j,:,m),0,v(1,:),w(:,m,1)),init(j,:,m),[],[],price(m,:),egr(m,j),zeros(29,1),[],[],options);
+%     end
+% end
+% 
+% %let the initial guess be the sgd.
+% g = zeros(size(sgd,1),size(sgd,2),size(sgd,3),4);
+% for k = 1:4
+%     g(:,:,:,k) = sgd;
+% end
 
 % init = g;
 % c_mat = zeros(size(init));
@@ -58,78 +58,91 @@ end
 %INNER LOOP
 %find a fixed point such that actual consumption matches expectataions
 
-options=optimset('Display','off','jacobian','on','TolFun',1e-6,'TolX',1e-6,'TolCon',1e-6,'DerivativeCheck','off',...
-    'GradObj','on');%,'Algorithm','active-set');
 
-err = 1;
-err_lag = inf;
-g_lag = g;
-count = 0;
-punishment = 0;
-break_flag = 0;
-while err > 1e-3 && count<40
-    count = count+1;
-    display(count);
-    l_count = 0;
-    c_mat = zeros(size(g));
-    for m = 1:18    
-            l_count = l_count+1;
-            %display(l_count)
-            for j = 1:4
-                for k = 1
-                    [c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),zeros(29,1),[],[],options);
-                    %if flag ~= 0 && flag ~= -100
-                    %[c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),zeros(29,1),[],[],options);
-                    %if flag < 1
-                        %display(flag);
-                        %punishment = 1;
-                    %end
-                end
-                for k = 2:size(egr,2)
-                    [c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),c_mat(k-1,:,m,j),[],[],options);%zeros(29,1),[],[],options);
-                    %if flag ~= 0 && flag ~= -100
-                    %[c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),zeros(29,1),[],[],options);%c_mat(k-1,:,m,j),[],[],options);
-                    %if flag < 1
-                        %display(flag);
-                        %punishment = 1;
-                    %end
-                    if isnan(c_mat(k,1,m,j)) == 1
-                        display('uh oh, we have NaNs');
-                        break_flag = 1;
-                        punishment = 1;
-                        break;
-                    end
-                end
-                if break_flag == 1
-                    display('NaN link 1');
-                    break;
-                end
-            end
-            
-        if break_flag == 1
-            display('NaN link 2');
-            break;
-        end
+%sobol points
+s = sobolset(1);
+s = net(s,25);
+
+options=optimset('Display','iter','jacobian','off','TolFun',1e-6,'TolX',1e-6,'TolCon',1e-6,'DerivativeCheck','off',...
+    'GradObj','off');%,'Algorithm','active-set');
+
+eq = zeros(28*3,18,4);
+for k = 1:18
+    for m = 1:4
+        [val,eq(:,k,m)] = fminsearch(@(x) inner([param1,param2],x,w(:,k,m),price(k,:),alp,v(m,:),egr(k,:),s),ones(28*3,1),options);
     end
-    err = norm(g(:)-c_mat(:))/norm(g(:));
-    if err <= err_lag
-        g_lag = g;
-        g = c_mat;
-        err_lag = err;
-    else
-        g = (g + 4*g_lag)/5;
-    end
-    display(err_lag);
-    display(err);
-    if count == 40
-            punishment = 1;
-    end
-    if break_flag == 1  || isnan(err) == 1
-        display('NaN link 3');
-        c_mat = zeros(size(g));
-        break;
-    end    
 end
+
+
+% err = 1;
+% err_lag = inf;
+% g_lag = g;
+% count = 0;
+% punishment = 0;
+% break_flag = 0;
+% while err > 1e-3 && count<40
+%     count = count+1;
+%     display(count);
+%     l_count = 0;
+%     c_mat = zeros(size(g));
+%     for m = 1:18    
+%             l_count = l_count+1;
+%             %display(l_count)
+%             for j = 1:4
+%                 for k = 1
+%                     [c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),zeros(29,1),[],[],options);
+%                     %if flag ~= 0 && flag ~= -100
+%                     %[c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),zeros(29,1),[],[],options);
+%                     %if flag < 1
+%                         %display(flag);
+%                         %punishment = 1;
+%                     %end
+%                 end
+%                 for k = 2:size(egr,2)
+%                     [c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),c_mat(k-1,:,m,j),[],[],options);%zeros(29,1),[],[],options);
+%                     %if flag ~= 0 && flag ~= -100
+%                     %[c_mat(k,:,m,j),~,flag] = fmincon(@(x) util_FOC([param1,param2],x,g(:,:,m,j),alp,v(j,:),w(:,m,j)),g(k,:,m,j),[],[],price(m,:),egr(m,k),zeros(29,1),[],[],options);%c_mat(k-1,:,m,j),[],[],options);
+%                     %if flag < 1
+%                         %display(flag);
+%                         %punishment = 1;
+%                     %end
+%                     if isnan(c_mat(k,1,m,j)) == 1
+%                         display('uh oh, we have NaNs');
+%                         break_flag = 1;
+%                         punishment = 1;
+%                         break;
+%                     end
+%                 end
+%                 if break_flag == 1
+%                     display('NaN link 1');
+%                     break;
+%                 end
+%             end
+%             
+%         if break_flag == 1
+%             display('NaN link 2');
+%             break;
+%         end
+%     end
+%     err = norm(g(:)-c_mat(:))/norm(g(:));
+%     if err <= err_lag
+%         g_lag = g;
+%         g = c_mat;
+%         err_lag = err;
+%     else
+%         g = (g + 4*g_lag)/5;
+%     end
+%     display(err_lag);
+%     display(err);
+%     if count == 40
+%             punishment = 1;
+%     end
+%     if break_flag == 1  || isnan(err) == 1
+%         display('NaN link 3');
+%         c_mat = zeros(size(g));
+%         break;
+%     end    
+% end
 
 display(param1);
 display(param2);
