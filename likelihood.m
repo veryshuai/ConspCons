@@ -61,15 +61,17 @@ v = v*vm; %scale v by the multiplier
 
 %sobol points
 s = sobolset(1);
-s = net(s,25);
+s = net(s,10);
 
-options=optimset('Display','iter','jacobian','off','TolFun',1e-6,'TolX',1e-6,'TolCon',1e-6,'DerivativeCheck','off',...
+options=optimset('Display','iter','jacobian','off','TolFun',1e-2,'TolX',1e-2,'TolCon',1e-6,'DerivativeCheck','off',...
     'GradObj','off');%,'Algorithm','active-set');
 
+init = ones(28*3,1);
 eq = zeros(28*3,18,4);
 for k = 1:18
     for m = 1:4
-        [val,eq(:,k,m)] = fminsearch(@(x) inner([param1,param2],x,w(:,k,m),price(k,:),alp,v(m,:),egr(k,:),s),ones(28*3,1),options);
+        [val,eq(:,k,m)] = fminunc(@(x) inner([param1,param2],x,w(:,k,m),price(k,:),alp,v(m,:),egr(k,:),s),init,options);
+        init = eq(:,k,m);
     end
 end
 

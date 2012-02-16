@@ -80,44 +80,49 @@ for j = 1:size(egr,2)
     %get fundy grad
     dudc = p(:,1)./bsxfun(@plus,p(:,2),cns);
     dcds = egr(j)./price';
-    sh_stack = repmat(sh',size(cf,2),1);
-    dsdcf = -bsxfun(@times,bsxfun(@times,repmat(sh',size(cf(:),1),1),repmat(w_poly,28,1)),sh_stack(size(cf,2)+1:end)'); %size(#coefs,#goods)
+    sh_stack = repmat(sh(2:end)',size(cf,2),1); %once this is vectorized, it will give me the right number of repeated shares
+    dsdcf = -bsxfun(@times,repmat(sh',size(cf(:),1),1).*repmat(w_poly,28,size(sh,1)),sh_stack(:)); %size(#coefs,#goods)
     for k = 1:size(cf,2)
         dsdcf(size(dsdcf,1)+k:size(dsdcf,1)+size(cf,2):end) = dsdcf(size(dsdcf,1)+k:size(dsdcf,1)+size(cf,2):end)' + sh(2:end)*w_poly(k);
     end
     dcdcf = bsxfun(@times,dcds',dsdcf);
-    dudcf = sum(bsxfun(@times,dudc',dcdcf),2);
+    dudcf = dcdcf*dudc;
     grad = dudcf;
     
     %get integral grad
-    dddc = zeros(size(s,1),29,29);
-    for k = 1:size(s,1)
-        for m = 1:29
-        dddc(:,m,m) = 1;
-        end
-    end
     
-    v_rep = repmat(v,size(s,1),1);
-    njacs = 1./(2*pi*v_rep.^2).*(diff./(v_rep.^2)).*exp(-diff.^2./(2*v_rep.^2));
-    fot_int = zeros(size(s,1),29);
-    fot_int(:,1) = prod(bsxfun(@times,wp_int_int(:,2:end),ws),2);
-    for k = 2:28
-       fot_int(:,k) = prod(bsxfun(@times,wp_int_int(:,[1:k-1,k+1:end]),ws),2);  
+    %dddc = zeros(size(s,1),29,29);
+    %for m = 1:29
+    %    dddc(:,m,m) = -1;
+    %end
+    
+    %v_rep = repmat(v,size(s,1),1);
+    %njacs = -1./((2*pi*v_rep.^2).^(.5)).*(diff./(v_rep.^2)).*exp(-diff.^2./(2*v_rep.^2));
+    %fot_int = zeros(size(s,1),29);
+    %fot_int(:,1) = prod(bsxfun(@times,wp_int_int(:,2:end),ws),2);
+    %for k = 2:28
+    %   fot_int(:,k) = prod(bsxfun(@times,wp_int_int(:,[1:k-1,k+1:end]),ws),2);  
+    %end
+    %fot_int(:,29) = prod(bsxfun(@times,wp_int_int(:,1:end-1),ws),2);
+    %fot = njacs.*fot_int/sum(prod(wp_int,2));
+    sot = repmat(wp,[1,size(s,1),29]);
+    sot = repmat(wp,[1,size(s,1),29]).*permute(sot,[2 1 3]);
+    sot = permute(sot,[2 3 1]).*repmat(2*diff./repmat((v.^2),size(s,1),1),[1 1 size(s,1)]);
+    sot = permute(sot,[3 1 2]);
+    fot = zeros(size(sot));
+    for k = 1:size(s,1)
+        fot(k,k,:) = wp(k)*-diff(k,:)./(v.^2); %there is some mistake here.
     end
-    fot_int(:,29) = prod(bsxfun(@times,wp_int_int(:,1:end-1),ws),2);
-    fot = njacs.*fot_int/sum(prod(wp_int,2));
-    sot_int = repmat(-wp/sum(prod(wp_int,2)),[1,29]);
-    sot = sot_int.*fot_int.*njacs;
     dwdd = fot + sot;
     
     dedw = su;
     
     dedc = zeros(29,1);
     for k = 1:29
-       dedc(k) = dedw'*sum(dwdd.*dddc(:,:,k),2); 
+        dedc(k) = sum((dwdd(:,:,k)'*dedw)*-1); %simpler and equivalent way of mutliplying by dddc, plus I avoid the expensive calculation of dddc. 
     end
     
-    dedcf = sum(bsxfun(@times,dedc',dcdcf),2);
+    dedcf = dcdcf*dedc;
     
     grad_ex = dedcf;
     
@@ -179,9 +184,8 @@ end
 
 % hessian = [[(1-alp)*bsxfun(@times,eye(29),-fu./bsxfun(@plus,p(:,2),c))+alp*sum(jac_dens,3);-ones(1,29)],[-ones(29,1);0]];
 u = - tu;
-foc = -tg;
+foc = -tg';
 for k = 1:size(cf,2)
    foc(k:size(cf,2):end) = foc(k:size(cf,2):end)/scl^(k-1); 
 end
-
 end
