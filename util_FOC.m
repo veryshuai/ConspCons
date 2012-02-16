@@ -91,22 +91,8 @@ for j = 1:size(egr,2)
     
     %get integral grad
     
-    %dddc = zeros(size(s,1),29,29);
-    %for m = 1:29
-    %    dddc(:,m,m) = -1;
-    %end
-    
-    %v_rep = repmat(v,size(s,1),1);
-    %njacs = -1./((2*pi*v_rep.^2).^(.5)).*(diff./(v_rep.^2)).*exp(-diff.^2./(2*v_rep.^2));
-    %fot_int = zeros(size(s,1),29);
-    %fot_int(:,1) = prod(bsxfun(@times,wp_int_int(:,2:end),ws),2);
-    %for k = 2:28
-    %   fot_int(:,k) = prod(bsxfun(@times,wp_int_int(:,[1:k-1,k+1:end]),ws),2);  
-    %end
-    %fot_int(:,29) = prod(bsxfun(@times,wp_int_int(:,1:end-1),ws),2);
-    %fot = njacs.*fot_int/sum(prod(wp_int,2));
     sot = repmat(wp,[1,size(s,1),29]);
-    sot = repmat(wp,[1,size(s,1),29]).*permute(sot,[2 1 3]);
+    sot = repmat(wp,[1,size(s,1),29]).*permute(sot,[2 1 3]); %this gives us wp*wp' repeated 29 times in a third direction
     sot = permute(sot,[2 3 1]).*repmat(2*diff./repmat((v.^2),size(s,1),1),[1 1 size(s,1)]);
     sot = permute(sot,[3 1 2]);
     fot = zeros(size(sot));
@@ -119,7 +105,7 @@ for j = 1:size(egr,2)
     
     dedc = zeros(29,1);
     for k = 1:29
-        dedc(k) = sum((dwdd(:,:,k)'*dedw)*-1); %simpler and equivalent way of mutliplying by dddc, plus I avoid the expensive calculation of dddc. 
+        dedc(k) = sum((dwdd(:,:,k)'*dedw)*-1)/size(s,1); %simpler and equivalent way of mutliplying by dddc. 
     end
     
     dedcf = dcdcf*dedc;
@@ -127,65 +113,11 @@ for j = 1:size(egr,2)
     grad_ex = dedcf;
     
     tg = tg + (1-alp)*grad + alp*grad_ex;
-         %(:,m) = 1/(2*pi*v(m)^2)*(diff(:,m)/(v(m)^2)).*exp(-dnsobj(:,m).^2/(2*v(m)^2));
-         %dm(:,m) = dm(:,m).*w_product./w_prob(:,m); 
-%     end
-%     dwdd = bsxfun(@times,dm,w)/sum(w_product.*w);
-%     
-%     dedw = 0;
-%     
-%     
 end
 
-%fundamental utility grad
-%fu = (bsxfun(@times,p(:,1)',1./bsxfun(@plus,p(:,2)',c')))';
-
-%equilibrium expenditure-utility vector
-%guv = sum(bsxfun(@times,p(:,1)',log(bsxfun(@plus,p(:,2)',g))),2);
-
-%likelihood vector for each wealth level
-%dm = ones(size(g,1),size(g,2));
-%dnsobj = bsxfun(@minus,g,c');
-%jac_dm = ones(size(g,2),size(g,2),size(g,1));
-
-%w_product = prod(w_prob,2);
-%for m = 1:29
-%   dm(:,m) = 1/(2*pi*v(m)^2)*(dnsobj(:,m)/(v(m)^2)).*exp(-dnsobj(:,m).^2/(2*v(m)^2));
-%   dm(:,m) = dm(:,m).*w_product./w_prob(:,m); 
-%end
-%dens = bsxfun(@times,dm,w)/sum(w_product.*w);
-
-% for m = 1:29
-%     for l = 1:m
-%         k = 1;
-%         while k<30 && k ~= m && k ~= l
-%             temp = normpdf(dnsobj(:,k),0,v(k)).*temp;
-%             k = k+1;
-%         end
-%         if m == l
-%             jac_dm(m,l,:) =temp.*((-1/(2*pi*v(m)^2)*(1/(v(m)^2))*exp(-dnsobj(:,m).^2/(2*v(m)^2))+1/(2*pi*v(m)^2)*(dnsobj(:,m).^2/(v(m)^4)).*exp(-dnsobj(:,m).^2/(2*v(m)^2))));
-%         else
-%             temp = ones(size(g,1),1);
-%             jac_dm(m,l,:) = prod([-1/(2*pi*v(m)^2)*(dnsobj(:,m)/(v(m)^2)).*exp(-dnsobj(:,m).^2/(2*v(m)^2)),...
-%                 -1/(2*pi*v(l)^2)*(dnsobj(:,l)/(v(l)^2)).*exp(-dnsobj(:,l).^2/(2*v(l)^2)),temp],2);
-%             jac_dm(l,m,:) = jac_dm(m,l,:);
-%         end
-%     end
-% end
-% jac_dens = zeros(size(jac_dm));
-% for k = 1:29
-%     temp = squeeze(jac_dm(k,:,:));
-% jac_dens(k,:,:) = bsxfun(@times,temp,w'.*guv');
-% end
-
-%ex = sum(bsxfun(@times,guv,dens))'; %social expectation of utility level
-
-%foc = fu;
-
-% hessian = [[(1-alp)*bsxfun(@times,eye(29),-fu./bsxfun(@plus,p(:,2),c))+alp*sum(jac_dens,3);-ones(1,29)],[-ones(29,1);0]];
 u = - tu;
 foc = -tg';
-for k = 1:size(cf,2)
-   foc(k:size(cf,2):end) = foc(k:size(cf,2):end)/scl^(k-1); 
-end
+ for k = 1:size(cf,2)
+    foc(k:size(cf,2):end) = foc(k:size(cf,2):end)/scl^(k-1); 
+ end
 end
