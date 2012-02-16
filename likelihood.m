@@ -15,7 +15,7 @@ param2 = X(30:58)'; %stone geary parameters
 alp = X(59); %weight of conspicuous consumption
 vm = X(60); %v multiplier
 
-alp = 0;
+%alp = 0;
 
 v = v*vm; %scale v by the multiplier
 

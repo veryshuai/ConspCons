@@ -116,7 +116,7 @@ for j = 1:size(egr,2)
 end
 
 u = - tu;
-foc = -tg';
+foc = -tg;
  for k = 1:size(cf,2)
     foc(k:size(cf,2):end) = foc(k:size(cf,2):end)/scl^(k-1); 
  end
