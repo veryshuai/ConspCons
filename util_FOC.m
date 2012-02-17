@@ -69,7 +69,7 @@ for j = 1:size(egr,2)
 
     fu = sum(bsxfun(@times,p(:,1),log(bsxfun(@plus,p(:,2),cns))),1);
     
-    diff = bsxfun(@minus,g,cns');
+    diff = bsxfun(@minus,cns',g);
     wp_int_int = normpdf(diff,zeros(size(diff)),repmat(v,size(diff,1),1));
     wp_int = bsxfun(@times,wp_int_int,ws);
     wp = prod(wp_int,2)/sum(prod(wp_int,2));
@@ -93,7 +93,7 @@ for j = 1:size(egr,2)
     
     sot = repmat(wp,[1,size(s,1),29]);
     sot = repmat(wp,[1,size(s,1),29]).*permute(sot,[2 1 3]); %this gives us wp*wp' repeated 29 times in a third direction
-    sot = permute(sot,[2 3 1]).*repmat(2*diff./repmat((v.^2),size(s,1),1),[1 1 size(s,1)]);
+    sot = permute(sot,[2 3 1]).*repmat(diff./repmat((v.^2),size(s,1),1),[1 1 size(s,1)]);
     sot = permute(sot,[3 1 2]);
     fot = zeros(size(sot));
     for k = 1:size(s,1)
@@ -105,7 +105,7 @@ for j = 1:size(egr,2)
     
     dedc = zeros(29,1);
     for k = 1:29
-        dedc(k) = sum((dwdd(:,:,k)'*dedw)*-1)/size(s,1); %simpler and equivalent way of mutliplying by dddc. 
+        dedc(k) = sum((dwdd(:,:,k)'*dedw)); %simpler and equivalent way of mutliplying by dddc. 
     end
     
     dedcf = dcdcf*dedc;
