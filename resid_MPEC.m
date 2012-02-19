@@ -1,44 +1,39 @@
-function r = resid_MPEC(cf,ac,egc)
-%This function takes model coefficients, actual expenditures, and actual
-%wealth grid cutoffs and returns a likelihood
+function r = resid_MPEC(x,ac,ce,scl)
+%This function takes model coefficients, actual budget shares and total
+%expenditure level
 
-mc = zeros(size(c_mat));
-for k = 1:size(egr,2)
-    for m = 1:18
-        for j = 1:4
-            c_mat_vals(k,:,m,j) = c_mat(k,:,m,j).*price(m,:);
-        end
-    end
-end
-
-%make a big model consumption grid (note that we leave out the really rich
-%guys...we don't consider them below anyway)
-bmcg = cell(size(ac));
-r = 0;
+upsiz = 29*2+2; %size of utility parameter vector
+cfsiz = 28*3; %size of coefficient vector for each year-type
 obs_num = 0;
 sq_r = 0;
-for j=1:4
-    for m = 1:18
-        bmcg{m,j} = zeros(size(ac{m,j},1),29);
-        obin = 1;
-        for k = 1:size(mc,1)
-            bmcg{m,j}(obin:egc{m,j}(k),:) = repmat(mc(k,:,m,j),egc{m,j}(k)-obin+1,1);
-            obin = egc{m,j}(k);
+bmcg = cell(size(ac)); %big model consumption grid
+for t = 1:18
+    for n = 1:4
+        cf = x(upsiz+cfsiz*(4*(t-1)+(n-1))+1:upsiz+cfsiz*(4*(t-1)+n),1);
+        cf = reshape(cf,size(cf,1)/28,28)';
+        for k = 1:size(cf,2)
+            cf(:,k) = cf(:,k)/scl^(k-1);
         end
-        bmcg{m,j} = bmcg{m,j}(egc{m,j}(1):egc{m,j}(end),:); %shrink out extremes
-        ac{m,j} = ac{m,j}(egc{m,j}(1):egc{m,j}(end),:); %shrink out extremes
-        obs_num = obs_num + size(ac{m,j},1) * size(ac{m,j},2);
-        sq_r = sum(sum((ac{m,j}-bmcg{m,j}).^2));
+
+        %get budget shares from coefficients        
+        bmcg{t,n} = bs(cf,ce{t,n});
+        sq_r = sq_r + sum(sum((ac{t,n}-bmcg{t,n}).^2));
+        obs_num = obs_num +size(ac{t,n},1);
     end
 end
 
 var_est = sq_r/obs_num;
-display(var_est);
+%display(var_est);
 
-for j=1:4
-    for m = 1:18
-        r = r + -sum(sum(log(normpdf(ac{m,j},bmcg{m,j},var_est*ones(size(ac{m,j})))))); %recursively calculate likelihood
+r = 0;
+for n=1:4
+    for t = 1:18
+        r = r + -sum(sum(log(normpdf(ac{t,n},bmcg{t,n},var_est*ones(size(ac{t,n})))))); %recursively calculate likelihood
     end
 end
+
+fid = fopen('2-18-2012-fp.txt','a');
+fprintf(fid,'resid\n\n');
+fprintf(fid,'%f\n',r);
 
 end

@@ -12,7 +12,7 @@ load dat
 %matlabpool open 6
 
 %open diary
-%diary 2-4-12.txt
+diary 2-18-12-1.txt
 
 %linearly extend prices to cover zeros and include only relevant price years
 price = price_fixing(price); 
@@ -52,11 +52,11 @@ for k = 15:18
 end
 
 % create expenditure grid by year [year,grid]
-gr_siz = 15;
+gr_siz = 5;
 w_b = zeros(2,18);
 egr = zeros(18,gr_siz);
 for k = 1:18
-w_b(:,k) = quantile(c.exp(c.y==k),[.1;.2]);
+w_b(:,k) = quantile(c.exp(c.y==k),[.1;.9]);
 %egr(k,:) = logspace(log(w_b(1,k))/log(10),log(w_b(2,k))/log(10),gr_siz); %logs
 egr(k,:) = linspace(w_b(1,k),w_b(2,k),gr_siz); %linear
 end
@@ -71,27 +71,16 @@ ti(:,4) = c.char(:,3)==0 & c.char(:,4) == 0; %nu4
 %make a type variable
 c.type = ti(:,1)+2*ti(:,2) +3*ti(:,3)+4*ti(:,4); 
 
-%create two dimensional consumption array with dimensions year, type, and element expenditure level
+%create two dimensional consumption array with dimensions year, type, and
+%element expenditure share
 c = sortrows(c,{'exp'});
 ca = cell(18,4);
 ce = cell(18,4);
 for k = 1:18
     for m = 1:4
-       ind = find(c.y==k & c.type==m);
-        ca{k,m} = c.cons(ind,:);
+       ind = find(c.y==k & c.type==m & c.exp >= w_b(1,k) & c.exp <= w_b(2,k));
+        ca{k,m} = c.cons(ind,:)./repmat(c.exp(ind),1,29);
         ce{k,m} = c.exp(ind);
-    end
-end
-
-% find the cutoff observations in data, this is going to be a two dimensional array [year,type]
-% and the elements will be the cuts 
-egr_cuts = cell(18,4);
-for k = 1:18
-    for m = 1:4
-        egr_cuts{k,m} = zeros(size(egr,2),1);
-        for j=1:size(egr,2)
-            egr_cuts{k,m}(j) = find(ce{k,m}>egr(k,j),1,'first');
-        end
     end
 end
 
@@ -119,15 +108,14 @@ for j = 1:18
     end
 end
 
-
-
 %v is literally the inverse of the vindex times grid size
 v = zeros(4,29);
 for k = 1:4
     v(k,:) = vin(k,:).^-1;
 end
 
-%call genetic algorithm
+%set scaling for parameters
+scl = quantile(c.exp(:),.9)^2;
 
     pop = [
         1.9859,   0.9653,    0.5793,    0.5732,    0.4198,    0.4594,    0.6135,    0.7510,    0.5674,    1.0082,    1.7941,    0.8475,    0.9879,    0.3887,    0.7303,    1.1098,    0.7369,    0.6466,    0.6035,    1.9949,    0.5178,    0.3652,    0.8599,    0.2485,    0.6243,    1.9441,    1.2079,    1.2181,    0.2136, 195.6,	332.4,	1702.6,	595.5,	654.3	,301.8	,105	,1237.7	,1131.9	,1743.2	,202.5	,111.1	,262.7	,959.1	,58.9	,991.3	,467.7	,380.5	,1616.7	,1883.1	,442	,648.4	,712.2	,683.2	,785.4	,996.1	,1721.9	,1772.9	,957,0,200;... 
@@ -152,9 +140,10 @@ end
         ];
    
 
-options=gaoptimset('Display','iter');
+options=optimset('Display','iter');
 
-[X,fval,exitflag] = ktrlink(@(x) resid(x,ca,egr_cuts),pop',[],[],[],[],[],[],mpec_err,options);   
+[X,fval,exitflag] = ktrlink(@(x) resid_MPEC(x,ca,ce,scl),[pop';ones(28*3*18*4,1)*2],[],[],[],[],...
+    [zeros(size(pop,2),1);ones(28*3*18*4,1)*-inf],[ones(size(pop,2)-2,1)*inf;2000;1;ones(28*3*18*4,1)*inf],@(x) mpec_err(x,price,egr,v,w,scl),options);   
 % options=gaoptimset('Display','iter','PopulationSize',30,'Generations',150,... 
 %    'StallTimeLimit',86400,'TimeLimit',Inf,'MutationFcn',@mutationadaptfeasible,...
 %    'FitnessScalingFcn',@fitscalingrank,'InitialPopulation',pop,'UseParallel','always',...
