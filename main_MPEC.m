@@ -12,7 +12,7 @@ load dat
 %matlabpool open 6
 
 %open diary
-diary 2-18-12-1.txt
+diary 2-19-12-1.txt
 
 %linearly extend prices to cover zeros and include only relevant price years
 price = price_fixing(price); 
@@ -52,11 +52,11 @@ for k = 15:18
 end
 
 % create expenditure grid by year [year,grid]
-gr_siz = 5;
+gr_siz = 3;
 w_b = zeros(2,18);
 egr = zeros(18,gr_siz);
 for k = 1:18
-w_b(:,k) = quantile(c.exp(c.y==k),[.1;.9]);
+w_b(:,k) = quantile(c.exp(c.y==k),[.1;.2]);
 %egr(k,:) = logspace(log(w_b(1,k))/log(10),log(w_b(2,k))/log(10),gr_siz); %logs
 egr(k,:) = linspace(w_b(1,k),w_b(2,k),gr_siz); %linear
 end
@@ -140,10 +140,11 @@ scl = quantile(c.exp(:),.9)^2;
         ];
    
 
-options=optimset('Display','iter');
+options=optimset('Display','iter','Algorithm','active-set');
 
 [X,fval,exitflag] = ktrlink(@(x) resid_MPEC(x,ca,ce,scl),[pop';ones(28*3*18*4,1)*2],[],[],[],[],...
-    [zeros(size(pop,2),1);ones(28*3*18*4,1)*-inf],[ones(size(pop,2)-2,1)*inf;2000;1;ones(28*3*18*4,1)*inf],@(x) mpec_err(x,price,egr,v,w,scl),options);   
+    [zeros(size(pop,2),1);ones(28*3*18*4,1)*-inf],[ones(size(pop,2)-2,1)*inf;2000;1;ones(28*3*18*4,1)*inf],...
+    @(x) mpec_err(x,price,egr,v,w,scl),options);   
 % options=gaoptimset('Display','iter','PopulationSize',30,'Generations',150,... 
 %    'StallTimeLimit',86400,'TimeLimit',Inf,'MutationFcn',@mutationadaptfeasible,...
 %    'FitnessScalingFcn',@fitscalingrank,'InitialPopulation',pop,'UseParallel','always',...

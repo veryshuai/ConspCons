@@ -8,8 +8,6 @@ warning off all;
 
 %diary off
 %diary 2-4-12.txt
-
-
     
 param1 = X(1:29); %cobb douglas parameters
 param2 = X(30:58); %stone geary parameters
@@ -46,8 +44,8 @@ for t = 1:18
 end
 %toc
 
-fid = fopen('2-18-2012-fp.txt','a');
-fprintf(fid,'eq_err\n\n');
-fprintf(fid,'%f\n',norm(dis)/norm(g));
+% fid = fopen('2-19-2012-fp.txt','a');
+% fprintf(fid,'eq_err\n\n');
+% fprintf(fid,'%f\n',norm(dis)/norm(g));
 
 end

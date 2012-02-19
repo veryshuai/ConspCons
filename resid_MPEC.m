@@ -32,8 +32,8 @@ for n=1:4
     end
 end
 
-fid = fopen('2-18-2012-fp.txt','a');
-fprintf(fid,'resid\n\n');
-fprintf(fid,'%f\n',r);
+% fid = fopen('2-18-2012-fp.txt','a');
+% fprintf(fid,'resid\n\n');
+% fprintf(fid,'%f\n',r);
 
 end
