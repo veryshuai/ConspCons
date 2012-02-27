@@ -59,7 +59,7 @@ for j = 1:size(egr,2)
     %get budget shares
     sh = zeros(29,1);
     for k = 1:28
-        sh(k+1) = exp(cf(k,:)*w_poly);
+        sh(k+1) = exp(min(cf(k,:)*w_poly,400));
     end
     sh = sh/(1+sum(sh));
     sh(1) = 1 - sum(sh);
@@ -70,8 +70,8 @@ for j = 1:size(egr,2)
     fu = sum(bsxfun(@times,p(:,1),log(bsxfun(@plus,p(:,2),cns))),1);
     
     diff = bsxfun(@minus,cns',g);
-    wp_int_int = normpdf(diff,zeros(size(diff)),repmat(v,size(diff,1),1));
-    wp_int = bsxfun(@times,wp_int_int,ws);
+    wp_int_int = max(normpdf(diff,zeros(size(diff)),repmat(v,size(diff,1),1)),1e-12);
+    wp_int = bsxfun(@times,wp_int_int,ws)*1e7; 
     wp = prod(wp_int,2)/sum(prod(wp_int,2));
     ex = sum(su.*wp);
     
@@ -90,23 +90,29 @@ for j = 1:size(egr,2)
     grad = dudcf;
     
     %get integral grad
-    
-    sot = repmat(wp,[1,size(s,1),29]);
-    sot = repmat(wp,[1,size(s,1),29]).*permute(sot,[2 1 3]); %this gives us wp*wp' repeated 29 times in a third direction
-    sot = permute(sot,[2 3 1]).*repmat(diff./repmat((v.^2),size(s,1),1),[1 1 size(s,1)]);
+    sot = bsxfun(@times,wp,ones([size(s,1),size(s,1),29]));
+    sot = bsxfun(@times,wp,ones([size(s,1),size(s,1),29])).*permute(sot,[2 1 3]); %this gives us wp*wp' repeated 29 times in a third direction
+    sot = bsxfun(@times,permute(sot,[2 3 1]),bsxfun(@rdivide,diff,(v.^2)));
+    %sot = permute(sot,[2 3 1]).*repmat(diff./repmat((v.^2),size(s,1),1),[1 1 size(s,1)]);
     sot = permute(sot,[3 1 2]);
+%     fot_test = zeros(size(sot));
+%     for k = 1:size(s,1)
+%         fot_test(k,k,:) = wp(k)*-diff(k,:)./(v.^2);
+%     end
+%     toc
     fot = zeros(size(sot));
-    for k = 1:size(s,1)
-        fot(k,k,:) = wp(k)*-diff(k,:)./(v.^2); %there is some mistake here.
-    end
+    fot_int = bsxfun(@rdivide,bsxfun(@times,wp,-diff),v.^2);
+    ind = bsxfun(@plus,(1:size(s,1)+1:size(s,1)^2)',(0:28).*size(s,1)^2); 
+    fot(ind) = fot_int(:);
     dwdd = fot + sot;
-    
+ 
     dedw = su;
-    
-    dedc = zeros(29,1);
-    for k = 1:29
-        dedc(k) = sum((dwdd(:,:,k)'*dedw)); %simpler and equivalent way of mutliplying by dddc. 
-    end
+     
+     %expensive for loop--tried to vectorize, but it was actually slower  
+     dedc = zeros(29,1);
+     for k = 1:29
+         dedc(k) = sum((dwdd(:,:,k)'*dedw)); %simpler and equivalent way of mutliplying by dddc--and slower.... 
+     end
     
     dedcf = dcdcf*dedc;
     
@@ -120,7 +126,10 @@ foc = -tg;
  for k = 1:size(cf,2)
     foc(k:size(cf,2):end) = foc(k:size(cf,2):end)/scl^(k-1); 
  end
+ if isnan(u) == 1
+     display('NaNs off the starboard bow!  All men into lifeboats!');
  u(isnan(u) == 1 | abs(u) == inf) = 0;
  foc(isnan(foc) == 1 | abs(foc) == inf) = 0;
+ end
  
 end

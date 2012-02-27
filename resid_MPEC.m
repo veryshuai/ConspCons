@@ -1,4 +1,4 @@
-function r = resid_MPEC(x,ac,ce,scl)
+function r = resid_MPEC(x,ac,ce,scl,N,T)
 %This function takes model coefficients, actual budget shares and total
 %expenditure level
 
@@ -7,9 +7,9 @@ cfsiz = 28*3; %size of coefficient vector for each year-type
 obs_num = 0;
 sq_r = 0;
 bmcg = cell(size(ac)); %big model consumption grid
-for t = 1:18
-    for n = 1:4
-        cf = x(upsiz+cfsiz*(4*(t-1)+(n-1))+1:upsiz+cfsiz*(4*(t-1)+n),1);
+for t = 1:T
+    for n = 1:N
+        cf = x(upsiz+cfsiz*(N*(t-1)+(n-1))+1:upsiz+cfsiz*(N*(t-1)+n),1);
         cf = reshape(cf,size(cf,1)/28,28)';
         for k = 1:size(cf,2)
             cf(:,k) = cf(:,k)/scl^(k-1);
@@ -26,8 +26,8 @@ var_est = sq_r/obs_num;
 %display(var_est);
 
 r = 0;
-for n=1:4
-    for t = 1:18
+for n=1:N
+    for t = 1:T
         r = r + -sum(sum(log(normpdf(ac{t,n},bmcg{t,n},var_est*ones(size(ac{t,n})))))); %recursively calculate likelihood
     end
 end
