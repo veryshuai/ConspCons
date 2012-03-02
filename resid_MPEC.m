@@ -1,4 +1,4 @@
-function r = resid_MPEC(x,ac,ce,scl,N,T,resid_scale)
+function r = resid_MPEC(x,ac,ce,scl,N,T,resid_scale,wt)
 %This function takes model coefficients, actual budget shares and total
 %expenditure level
 
@@ -8,9 +8,9 @@ obs_num = 0;
 sq_r = 0;
 bmcg = cell(size(ac)); %big model consumption grid
 tic
-for t = 1:T
-    for n = 1:N
-        cf = x(upsiz+cfsiz*(N*(t-1)+(n-1))+1:upsiz+cfsiz*(N*(t-1)+n),1);
+for t = 1:numel(T)
+    for n = 1:numel(N)
+        cf = x(upsiz+cfsiz*(numel(N)*(t-1)+(n-1))+1:upsiz+cfsiz*(numel(N)*(t-1)+n),1);
         cf = reshape(cf,size(cf,1)/28,28)';
         for k = 1:size(cf,2)
             cf(:,k) = cf(:,k)/scl^(k-1);
