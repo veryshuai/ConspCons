@@ -24,7 +24,7 @@ for j = 1:size(s{1},1)
     end
     
     %density
-    ws(j) = w_poly'*w(1:end-1);%/w(end);
+    ws(j) = w_poly'*w(1:end-1)/w(end);
     
     %get budget shares
     sh = zeros(29,1);
@@ -75,7 +75,7 @@ for j = 1:size(egr,2)
     wp_int_int = max(normpdf(diff,zeros(size(diff)),repmat(v,size(diff,1),1)),1e-25);
     wp_int = bsxfun(@times,wp_int_int,ws)*1e7; 
     wp = prod(wp_int,2)/sum(prod(wp_int,2));
-    ex = s{2}*sum(s{1}(:,2).*su.*wp); %quadrature weighted integration
+    ex = sum(s{1}(:,2).*su.*wp)/sum(s{1}(:,2)); %quadrature weighted integration
     
     tu = tu + (1-alp)*fu + alp * ex;
     
@@ -108,7 +108,7 @@ for j = 1:size(egr,2)
     fot(ind) = fot_int(:);
     dwdd = fot + sot;
  
-    dedw = s{2}*s{1}(:,2).*su;
+    dedw = s{1}(:,2).*su/sum(s{1}(:,2));
      
      %expensive for loop--tried to vectorize, but it was actually slower to use arrayfun 
      dedc = zeros(29,1);

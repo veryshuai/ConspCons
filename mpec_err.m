@@ -21,7 +21,7 @@ cp = cell(numel(T)*numel(N),1);
 g_int = reshape(X(upsiz+1:end),numel(N)*cfsiz,numel(T));
 g = mat2cell(g_int,ones(1,numel(N))*cfsiz,ones(1,numel(T)))';
 
-options=optimset('Display','off','jacobian','on','TolFun',1e-5,'TolX',1e-6,'TolCon',1e-6,'DerivativeCheck','off',...
+options=optimset('Display','iter','jacobian','on','TolFun',1e-4,'TolX',1e-8,'TolCon',1e-4,'DerivativeCheck','off',...
             'GradObj','on','MaxIter',200,'LargeScale','off');
 
 parfor z = 1:numel(T)*numel(N)
@@ -29,8 +29,11 @@ parfor z = 1:numel(T)*numel(N)
     n = mod(z+numel(N)-1,numel(N))+1;
     pscale = abs(util_FOC([param1,param2],g{t,n},w(:,T(t),N(n)),price(T(t),:),scl,...
             g{t,n},alp,s{t,:},v{N(n)},egr{T(t)},1));
-    cp{z} = fminunc(@(x) util_FOC([param1,param2],x,w(:,T(t),N(n)),price(T(t),:),scl,...
+    [cp{z},~,flag] = fminunc(@(x) util_FOC([param1,param2],x,w(:,T(t),N(n)),price(T(t),:),scl,...
             g{t,n},alp,s{t,:},v{N(n)},egr{T(t)},pscale),g{t,n},options);
+        if flag<=0
+            display('ERROR: Convergence issue in constraint evaluation');
+        end
 end
 
 out_int = cell2mat(cp);
