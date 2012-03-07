@@ -21,7 +21,7 @@ cp = cell(numel(T)*numel(N),1);
 g_int = reshape(X(upsiz+1:end),numel(N)*cfsiz,numel(T));
 g = mat2cell(g_int,ones(1,numel(N))*cfsiz,ones(1,numel(T)))';
 
-options=optimset('Display','iter','jacobian','on','TolFun',1e-4,'TolX',1e-8,'TolCon',1e-4,'DerivativeCheck','off',...
+options=optimset('Display','off','jacobian','on','TolFun',1e-6,'TolX',1e-10,'TolCon',1e-6,'DerivativeCheck','off',...
             'GradObj','on','MaxIter',200,'LargeScale','off');
 
 parfor z = 1:numel(T)*numel(N)
