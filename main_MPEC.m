@@ -9,9 +9,9 @@ warning off all;
 load dat
 
 %open parallel functionality
-if matlabpool('size')<12
-matlabpool open 12
-end
+%if matlabpool('size')<12
+%matlabpool open 12
+%end
 
 %open diary (NOW USING LOG FILES called in matlab command line when opening)
 %diary 2-28-12.txt
@@ -98,16 +98,18 @@ end
 
 %now we need to approximate expenditures with a continuous distribution.
 %I choose to fit a polynomial.
-w = zeros(4,18,4);
+w = zeros(2,18,4);
 resolution = 30; %number of grid points
 freqs = zeros(resolution+1,18,4);
 for j = 1:18
-    ind_var = linspace(w_b(1,j),w_b(2,j),resolution+1)';
-    for k = 1:4
-        freqs(:,j,k) = histc(ce{j,k},ind_var);
-        w(1:3,j,k) = regress(freqs(1:end-1,j,k),[ind_var(1:end-1).^0,ind_var(1:end-1).^1,ind_var(1:end-1).^2]);
-        pred = [ind_var(1:end-1).^0,ind_var(1:end-1).^1,ind_var(1:end-1).^2]*w(1:3,j,k); 
-        w(4,j,k) = quad(@(x) w(1,j,k) + w(2,j,k)*x + w(3,j,k)*x.^2,w_b(1,j),w_b(2,j));
+    %ind_var = linspace(w_b(1,j),w_b(2,j),resolution+1)';
+    for k = 1:4        
+        w(1,j,k) = sum(log(ce{j,k}))/size(ce{j,k},1);
+        w(2,j,k) = sum((log(ce{j,k})-w(1,j,k)).^2)/size(ce{j,k},1);
+        %freqs(:,j,k) = histc(ce{j,k},ind_var);
+        %w(1:3,j,k) = regress(freqs(1:end-1,j,k),[ind_var(1:end-1).^0,ind_var(1:end-1).^1,ind_var(1:end-1).^2]);
+        %pred = [ind_var(1:end-1).^0,ind_var(1:end-1).^1,ind_var(1:end-1).^2]*w(1:3,j,k); 
+        %w(4,j,k) = quad(@(x) w(1,j,k) + w(2,j,k)*x + w(3,j,k)*x.^2,w_b(1,j),w_b(2,j));
     end
 end
 
@@ -126,14 +128,18 @@ T = [1,4,7,11,14,18];
 %set scaling for parameters
 scl = quantile(c.exp(:),.2)^2;
 
-%Use four-point Gaussian quadrature (weights and points from Wikipedia)
+%Use eight-point Gaussian quadrature (weights and points from Wikipedia)
 s = cell(numel(T),2);
 for t = 1:numel(T)
     ow = (egr{t}(end)-egr{t}(1))/2; %outer conversion weight
     iw = (egr{t}(end)+egr{t}(1))/2; %inner conversion weight
-    s{t,2} = ow;
-    s{t,1} = [ow*[sqrt((3-2*sqrt(6/5))/7);-sqrt((3-2*sqrt(6/5))/7);sqrt((3+2*sqrt(6/5))/7);-sqrt((3+2*sqrt(6/5))/7)]+iw,...
-        [(18+sqrt(30))/36;(18+sqrt(30))/36;(18-sqrt(30))/36;(18-sqrt(30))/36]]; %column 1 is evaluation points, column 2 is weights
+%    s{t,2} = ow;
+%    s{t,1} = [ow*[sqrt((3-2*sqrt(6/5))/7);-sqrt((3-2*sqrt(6/5))/7);sqrt((3+2*sqrt(6/5))/7);-sqrt((3+2*sqrt(6/5))/7)]+iw,...
+%        [(18+sqrt(30))/36;(18+sqrt(30))/36;(18-sqrt(30))/36;(18-sqrt(30))/36]]; %column 1 is evaluation points, column 2 is weights
+s{t,2} = ow;
+s{t,1} = [.18343464 .52553241 .79666648 .96028986 -.18343464 -.52553241 -.79666648 -.96028986;...
+          .36268378 .31370665 .22238103 .10122854 .36268378 .31370665 .22238103 .10122854]';
+s{t,1}(:,1) = s{t,1}(:,1)*ow+iw;
 end
 
 %Sobol version
