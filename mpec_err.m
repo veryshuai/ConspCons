@@ -1,4 +1,4 @@
-function [empty,out] = mpec_err(X,price,egr,v,w,scl,s,N,T,me_scale)
+function [empty,out] = mpec_err(X,price,egr,v,w,scl,P,T,me_scale)
 
 empty = []; %inequality constraints...mine are all equality
 %tic 
@@ -7,19 +7,23 @@ warning off all;
 param1 = X(1:29); %cobb douglas parameters
 param2 = X(30:58); %stone geary parameters
 alp = X(59); %weight of conspicuous consumption
-vm = X(60); %v multiplier
+%vm = X(60); %v multiplier
 
-for k = N
-v{k} = v{k}*vm; %scale v by the multiplier
-end
+%for k = N
+%v{k} = v{k}*vm; %scale v by the multiplier
+%end
 
-upsiz = 29*2+2; %size of utility parameter vector
-cfsiz = 28*3; %size of coefficient vector for each year-type
+P = 3; %TEMP
+
+upsiz = 29*2+1; %size of utility parameter vector
+cfsiz = 29*P; %size of coefficient vector for each year
+
+X = X(1:upsiz+numel(T)*cfsiz); %TEMP
 
 %set up param cells
-cp = cell(numel(T)*numel(N),1);
-g_int = reshape(X(upsiz+1:end),numel(N)*cfsiz,numel(T));
-g = mat2cell(g_int,ones(1,numel(N))*cfsiz,ones(1,numel(T)))';
+cp = cell(numel(T),1);
+g_int = reshape(X(upsiz+1:end),cfsiz,numel(T));
+g = mat2cell(g_int,cfsiz,ones(1,numel(T)))';
 
 options=optimset('Display','off','jacobian','on','TolFun',1e-6,'TolX',1e-10,'TolCon',1e-6,'DerivativeCheck','off',...
             'GradObj','on','MaxIter',200,'LargeScale','off');

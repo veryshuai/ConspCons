@@ -1,39 +1,44 @@
-function [u,foc] = util_FOC(p,cf,w,price,scl,gcf,alp,s1,s2,v,egr,pscale)
-%function [u,foc,hessian] = util_FOC(p,input,g,alp,v,w,expend)
+function [u,foc] = util_FOC(p,cf,price,scl,gcf,alp,v,egr,pscale,P)
 %calculates utility FOC for parameter vector p, approx coefficients cf and
 %weath level w
 
-s = cell(2,1);
-s{1} = s1;
-s{2} = s2;
-%% get numerical integration utilities (su, sobel utility)
-gcf = reshape(gcf,size(gcf,1)/28,28)';
+%get social guess of utility for large number of wealth types (1000) and 29 observation types.
+gcf = reshape(gcf,size(gcf,1)/29,29)';
 for k = 1:size(gcf,2)
     gcf(:,k) = gcf(:,k)/scl^(k-1);
 end
 
-g  = zeros(size(s{1},1),29);
-su = zeros(size(s{1},1),1);
-ws = zeros(size(s{1},1),1);
+%wealth grid size and actual wealth grid
+ws = 1000;
+wg = linspace(egr(1),egr(end),ws);
+nwg = wg-sum(price'.*p(:,2));
 
-for j = 1:size(s{1},1)
-    
-    w_poly = zeros(size(gcf,2),1);
-    for k = 1:size(gcf,2)
-        w_poly(k) = s{1}(j,1)^(k-1);
-    end
-    
-    %density
-    ws(j) = lognpdf(s{1}(j,1),w(1),w(2));
-    
-    %get budget shares
-    sh = zeros(29,1);
-    for k = 1:28
-        sh(k+1) = exp(gcf(k,:)*w_poly);
-    end
-    sh = sh/(1+sum(sh));
-    sh(1) = 1 - sum(sh);
+%This will hold a matrix of consumption guesses for observation types, each cell element is 1000x29
+g  = cell(29,1);
 
+%weighting vector
+wv = p(:,1)./price'; 
+
+%wealth powers
+    w_poly = ones(ws,P);
+    for k = 2:P
+        w_poly(:,k) =wg.^(k-1);
+    end
+
+gc = cell(29,1);
+%Loop over announced observation types
+for j = 1:29
+    
+        %get consumptions 
+	gc{j} = zeros(29,ws);
+	gc{j}(j,:) = p(j,2) + (wg' - sum(price'.*p(:,2))).*(exp(sum(bsxfun(@times,gcf(j,:),w_poly),2))./(1+exp(sum(bsxfun(@times,gcf(j,:),w_poly),2))))/price(j);
+	nnwg = nwg - gc{j}(j,:);
+	ctemp = p(:,2) + wv*nnwg;
+	ctemp(j,:) = gc{j}(j,:);
+
+	gc{j} = ctemp;
+
+	%get utilities
     %get actual consumption
     g(j,:) = (s{1}(j,1) * sh)./price';
     
