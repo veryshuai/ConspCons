@@ -89,10 +89,10 @@ parfor h = 1:size(exp,1)
         if isnan(temp)==0 && abs(temp)<inf
             lik(k) = temp*v{type(h)}(k);
         elseif isnan(temp) == 1
-            lik(k) = 0;
+            lik(k) = -inf;
 %            nan_count = nan_count + 1;
         else
-            lik(k) = 0;
+            lik(k) = -inf;
 %            inf_count = inf_count + 1;
         end
     end

@@ -1,4 +1,4 @@
-function lik = likEM_loop(X,cons,exp,y,price,ot_ind,w_b,c_b)
+function lik = likEM_loop(X,cons,exp,y,price,ot_ind,w_b,c_b,scl)
 %Calculates likelihood given type
 
 param1 = X(1:29); %cobb douglas parameters
@@ -96,7 +96,7 @@ for h = 1:size(exp,1)
     end
 end
 
-lik = -lik; %we want to maximize the likelihood, not minimize it!
+lik = -lik/scl; %we want to maximize the likelihood, not minimize it!
 %display(nan_count);
 %display(inf_count);
 %toc
