@@ -26,7 +26,7 @@ expend = sum(cons,2);
 c = dataset(expend,cons,char);
 
 %drop obs if expenditure less than one dollar/yr
-ind = find(expend>1000);
+ind = find(expend>5000);
 less_than_ones = size(expend,1) - size(ind,1);
 c = c(ind,:);
 
@@ -88,7 +88,7 @@ ot_ind = randi(29,size(c,1),1);
 ot_ind_old = ones(size(c,1),1);
 
 %make c of a managable size
-I = randi(size(c,1),10000,1);
+I = randi(size(c,1),1000,1);
 %load I;
 c = c(I,:);
 ot_ind = ot_ind(I);
@@ -102,8 +102,8 @@ y = c.y;
 type = c.type;
 
 %init = [1;7.59210648140400;4.73543180019105;5.74862875334654;4.95440784574850;12.7037395527745;5.69478318955006;7.88753934896234;1.44938461037568;9.18538421369885;9.05132228657440;9.00566247190964;3.49072874128893;8.27878887702105;10.4018645159034;8.17370675069044;15.4762574500119;9.68697383660247;3.55478951284719;7.94333412618397;7.18239264327919;11.4795764405883;4.45354347075682;9.18123307895688;4.89033935794127;12.1057696447419;9.14687789130620;9.31117750145790;7.41878093944565;7.61952386298256;7.70619388603037;8.23975939816500;7.71149476704346;7.84473732613889;7.25724006498097;7.48925368453039;7.50087264872762;7.82344615001618;7.60552520095296;7.57603338714131;7.19619527149678;7.87225119947359;7.39836937524840;7.30019148841177;7.81848287278297;7.73258241738970;9.12571047476629;7.32590778396217;7.73716194637371;8.15061049349470;7.69021491224891;7.67405438242449;7.66479184955140;7.72149575366749;6.55816617452169;7.71298023499229;7.98213121498031;7.23763544816502;0.438919082280316;];
-init = linspace(0,1,36)';
-%init = 0;
+%init = linspace(0,1,36)';
+init = .9967;
 %scale
 %scl = abs(likEM_loop(init,cons,expend,y,price,ot_ind,w_b,c_b,1));
 scl = 1;
@@ -114,12 +114,13 @@ while min(ot_ind == ot_ind_old) == 0
 
 % E step
 
-%options=optimset('Display','iter','Algorithm','interior-point','TolCon',1e-3,'TolX',1e-4,'TolFun',1e-3,'MaxFunEvals',1e5,'MaxIter',20);%,'SubProblemAlgorithm','cg');%,'Hessian','bfgs');
+options=optimset('Display','iter','Algorithm','interior-point','TolCon',1e-10,'TolX',1e-12,'TolFun',1e-10,'MaxFunEvals',1e5,'MaxIter',50);%,'SubProblemAlgorithm','cg');%,'Hessian','bfgs');
 %options=optimset('Display','iter','LargeScale','off','TolCon',1e-12,'TolX',1e-12,'TolFun',1e-10,'MaxFunEvals',1e5,'MaxIter',150,'HessUpdate','bfgs');%,'SubProblemAlgorithm','cg');%,'Hessian','bfgs');
-options = gaoptimset('Display','iter','InitialPopulation',init,'PopulationSize',36,'UseParallel','always','PlotFcns',@gaplotbestf,'StallGenLimit',20);
+%options = gaoptimset('Display','iter','InitialPopulation',init,'PopulationSize',36,'UseParallel','always','PlotFcns',@gaplotbestf,'StallGenLimit',20);
 
 %[X,fval,exitflag] = fminunc(@(x) likEM_loop(x,cons,expend,y,price,ot_ind,w_b,c_b,scl,v),init,options);
-X = ga(@(x) likEM_loop(x,cons,expend,y,price,ot_ind,w_b,c_b,scl),1,[],[],[],[],1e-12,1-1e-12,[],[],options);   
+%X = ga(@(x) likEM_loop(x,cons,expend,y,price,ot_ind,w_b,c_b,scl),1,[],[],[],[],.01,.9,[],[],options);   
+X = ktrlink(@(x) likEM_loop(x,cons,expend,y,price,ot_ind,w_b,c_b,scl),init,[],[],[],[],0,1,[],options);   
 
 [~,mu,sig,zm] = likEM_loop(X,cons,expend,y,price,ot_ind,w_b,c_b,scl);
 

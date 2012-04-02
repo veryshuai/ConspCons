@@ -3,29 +3,29 @@ function [lik,mu,sig,zm] = likEM_loop(inp,cons,expend,y,price,ot_ind,w_b,c_b,scl
 
 alp = inp;
 %alp = exp(inp(1))/(1+exp(inp(1)));
-%zm  = exp(inp(2:end))./(1+exp(inp(2:end)));
 
 %get the equilibrium c's for a wealth grid 
 b = logical(1-eye(29));
-% g = @(x,K,k,m,bet) (1-alp)*sum(bet(b(:,k)))/(bet(k) + alp*(sum(bet(b(:,k)))))*x + K*x.^(bet(k)/(alp*(sum(bet(b(:,k)))))); 
-% g_w =  @(x,K,k,m,bet) g(x,K,k,m,bet) + price(m,k)*x;
-% g_p = @(x,K,k,m,bet) 1/alp*((1-alp)*price(m,k) - bet(k)/(sum(bet(b(:,k))))*g(x,K,k,m,bet)./x);
-% g_pp = @(x,K,k,m,bet) -bet(k)/(alp*(sum(bet(b(:,k)))))*(g_p(x,K,k,m,bet)./x-g(x,K,k,m,bet)./(x.^2));
-% 
-% %Create constant and wealth/consumption grids (for ease of finding c given
-% %W)
-% 
-% K = cell(29,18);
-% cg = cell(29,18);
-% wg = cell(29,18);
-% for m = 1:18
-%     for k=1:29 
-%         %K{k,m} = @(bet) (w_b(m)-((sum(bet(b(:,k))))*(1-alp)/(bet(k)+alp*(sum(bet(b(:,k))))+price(m,k))*bet(k)/price(m,k)*w_b(m))/(bet(k)/price(m,k)*w_b(m))^(bet(k)/((sum(bet(b(:,k))))*alp));   
-%         K{k,m} = @(bet) (bet(k)/(price(m,k)*sum(bet))*w_b(m))^(1-bet(k)/(alp*sum(bet(b(:,k)))))*(1-sum(bet(b(:,k)))*(1-alp)/(bet(k)+alp*sum(bet(b(:,k)))));
-%         cg{k,m} = linspace(1e-12,c_b(m)/price(m,k),1000);
-%         wg{k,m} = @(bet) g_w(cg{k,m}/price(m,k),K{k,m}(bet),k,m,bet);
-%     end
-% end
+ g = @(x,K,k,m,bet) (1-alp)*sum(bet(b(:,k)))/(bet(k) + alp*(sum(bet(b(:,k)))))*price(m,k)*x + K*x.^(-bet(k)/(alp*(sum(bet(b(:,k)))))); 
+ %g_w =  @(x,K,k,m,bet) g(x,K,k,m,bet) + price(m,k)*x;
+g_p = @(x,K,k,m,bet) 1/alp*((1-alp)*price(m,k) - bet(k)/(sum(bet(b(:,k))))*g(x,K,k,m,bet)./x);
+%g_pp = @(x,K,k,m,bet) -bet(k)/(alp*(sum(bet(b(:,k)))))*(g_p(x,K,k,m,bet)./x-g(x,K,k,m,bet)./(x.^2));
+
+%Create constant and wealth/consumption grids (for ease of finding c given
+%W)
+
+K = cell(29,18);
+%cg = cell(29,18);
+%wg = cell(29,18);
+for m = 1:18
+    for k=1:29 
+        %K{k,m} = @(bet) (w_b(m)-((sum(bet(b(:,k))))*(1-alp)/(bet(k)+alp*(sum(bet(b(:,k))))+price(m,k))*bet(k)/price(m,k)*w_b(m))/(bet(k)/price(m,k)*w_b(m))^(bet(k)/((sum(bet(b(:,k))))*alp));   
+        %K{k,m} = @(bet) (bet(k)/(price(m,k)*sum(bet))*w_b(m))^(1+bet(k)/(alp*sum(bet(b(:,k)))))*(1-sum(bet(b(:,k)))*(1-alp)/(bet(k)+alp*sum(bet(b(:,k)))));
+        K{k,m} = @(bet) (w_b(m)-(bet(k)+sum(bet(b(:,k))))/(bet(k) + alp*sum(bet(b(:,k))))*price(m,k)*bet(k)/sum(bet)*w_b(m)/price(m,k))*(bet(k)/sum(bet)*w_b(m)/price(m,k))^(bet(k)/(alp*sum(bet(b(:,k)))));
+        %cg{k,m} = linspace(1e-12,c_b(m)/price(m,k),1000);
+        %wg{k,m} = @(bet) g_w(cg{k,m}/price(m,k),K{k,m}(bet),k,m,bet);
+    end
+end
 % 
 % %create dgdc as a function of other gammas, for not food at home
 % dgdc = cell(29,18);
@@ -54,6 +54,8 @@ b = logical(1-eye(29));
 %nan_count = 0;
 %inf_count = 0;
 %sv = zeros(29,1); %best sample variances
+flag = zeros(size(expend));
+weirdo = 0;
 ngam = zeros(29,size(expend,1)); %gams,household
 for h = 1:size(expend,1)
     %display(h);
@@ -65,25 +67,36 @@ for h = 1:size(expend,1)
     	%ind = find(expend(h)>tempw,1,'last');
         %ogam = gam(ot) + dgdc{ot,y(h)}(cg{ot,y(h)}(ind)/price(y(h),ot),gam,tempw(ind),ot,y(h))*(cons(h,ot)-cg{ot,y(h)}(ind))/price(y(h),ot);
         %gam(ot) = max(ogam,0);
-        gam(ot) = sum(gam(b(:,ot)))*((1-alp)/(expend(h)/(cons(h,ot)*price(y(h),ot))-1)-alp);
-        if gam(ot)<0
-            gam(ot) = 50; %punishment, give a large enough value to hurt, but not inf which kills likelihood
-        end
-        ngam(:,h) = gam;
+%         gam(ot) = sum(gam(b(:,ot)))*((1-alp)/(expend(h)/(cons(h,ot)*price(y(h),ot))-1)-alp);
+%         if gam(ot)<0
+%             gam(ot) = 50; %punishment, give a large enough value to hurt, but not inf which kills likelihood
+%         end
+         gam(ot) = sum(gam(b(:,ot)))*cons(h,ot)/price(y(h),ot)*((1-alp)*price(y(h),ot)/(expend(h)-cons(h,ot))-alp*g_p(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam)/g(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam));         
+         if gam(ot)<0 || isnan(gam(ot)) == 1
+             %gam(ot) = 100; %punishment, give a large enough value to hurt, but not inf which kills likelihood
+             flag(h) = 1;
+             weirdo = weirdo + 1;
+         end
+         ngam(:,h) = gam;
     else
         gam = cons(h,:)/cons(h,1);
         %tempw = wg{ot,y(h)}(gam);
         %ind = find(expend(h)>tempw,1,'last');
         %hgam = sum(gam(2:end)) + dhdc{ot,y(h)}(cg{ot,y(h)}(ind)/price(y(h),ot),gam,tempw(ind),ot,y(h))*(cons(h,ot)-cg{ot,y(h)}(ind))/price(y(h),ot);
         %hat = max(hgam,0);
-        hat = ((1-alp)/(expend(h)/(cons(h,ot)*price(y(h),ot))-1)-alp)^-1;
-        if hat < 0
-            hat = 500; %punishment, large enough to hurt but not kill
+        %hat = ((1-alp)/(expend(h)/(cons(h,ot)*price(y(h),ot))-1)-alp)^-1;
+        hat = (cons(h,ot)/price(y(h),ot)*((1-alp)*price(y(h),ot)/(expend(h)-cons(h,ot))-alp*g_p(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam)/g(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam)))^(-1);        
+        if hat < 0 || isnan(hat) == 1
+            %hat = 5000; %punishment, large enough to hurt but not kill
+            flag(h) = 1;
+            weirdo = weirdo + 1;
         end
         gam(2:end) = cons(h,2:end)*hat/(expend(h)-cons(h,ot));
         ngam(:,h) = gam;
     end
 end
+
+display(['A total of ', num2str(weirdo), ' weirdos.']);
 
 %to deal with very unlikely guys...
 %ngam = min(ngam,100);
@@ -95,13 +108,20 @@ zm = zeros(28,1);
 lik = 0;
 for m = 2:29
     k = m-1;
-    mu(k) = mean(log(ngam(m,ngam(m,:)>0)));
-    sig(k) = sqrt(mean((log(ngam(m,ngam(m,:)>0))-mu(k)).^2));
-    zm(k) = sum(ngam(m,:)==0)/size(ngam(m,:),2);
-    lik = lik + sum(log(lognpdf(ngam(m,ngam(m,:)>0),mu(k),sig(k))))+log(zm(k))*sum(ngam(m,:)==0)+log(1-zm(k))*sum(ngam(m,:)>0);
+    use = (flag==0)';
+    nmp = ngam(m,:)>0; %not mass points
+    mp = 1-nmp; %mass points
+    mu(k) = mean(log(ngam(m,nmp & use)));
+    sig(k) = sqrt(mean((log(ngam(m,nmp & use))-mu(k)).^2));
+    zm(k) = sum(mp & use)/sum(use);
+    lik = lik + sum(log(lognpdf(ngam(m,nmp & use),mu(k),sig(k))))+log(zm(k))*sum(mp & use)+log(1-zm(k))*sum(nmp & use);
     %lam(k) = 1/mean(ngam(k,:));
     %lik    = lik + sum(log(exppdf(ngam(k,:),lam(k))));
 end
+
+%Punish
+lik = lik - sum(flag)*100000;
+
 %%likmin = 0;
 %nan_count = 0;
 %inf_count = 0;
