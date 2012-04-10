@@ -1,4 +1,4 @@
-function [biglik,mu,sig,zm] = likEM_loop(inp,cons,expend,y,price,ot_ind,w_b,c_b,scl,v,type,zm)
+function [ob_type,mu,sig,zm] = not_ind_oa(inp,cons,expend,y,type,price,ot_ind,w_b,c_b,scl,v,zm)
 %Calculates likelihood given type and weight of conspicuous consumption.  The coefficient on food at home is set to one, and all approximations are around one.
 
 alp = inp(1);
@@ -22,32 +22,46 @@ for m = 1:18
     end
 end
 
+options = optimset('Display','off','MaxIter',100,'Algorithm','active-set');
+%tic
 %% calculate likelihood
 %ot is observation type, should have one for each household
 biglik = 0;
 weirdo = 0;
 ob_type = zeros(size(expend));
 for h = 1:size(expend,1)
+    %display(h);
     lik = zeros(29,1);
     gamcd = cons(h,:)/cons(h,1);
     flag = zeros(29,1);
     for k = 1:29
-        %display(h);
         ot = k;
         if ot ~= 1
             gam = gamcd;
-            gam(ot) = sum(gam(b(:,ot)))*cons(h,ot)/price(y(h),ot)*((1-alp)*price(y(h),ot)/(expend(h)-cons(h,ot))-alp*g_p(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam)/g(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam));         
-            if gam(ot)<0 || isnan(gam(ot)) == 1
-                %weirdo = weirdo + 1;
-                gam(ot) = gamcd(ot);
-                flag(ot) = 1;
-            end
-                gl = gam(2:end);
-                lik(ot) = log(v{type(h)}(ot))+sum((gl>0).*log(1-zm)) + sum((gl==0).*log(zm))+sum(log(max(lognpdf(gl(gl>0),mu(gl>0),sig(gl>0)),1e-12)));          
-                if flag(ot) == 1
-                    lik(k) = lik(k) - abs(lik(k));
+            index = (1:29);
+            below = index(index<ot);
+            above = index(index>ot);
+            funfun = @(x) x - sum(gam(b(:,ot)))*cons(h,ot)/price(y(h),ot)*((1-alp)*price(y(h),ot)/(expend(h)-cons(h,ot))-alp*g_p(cons(h,ot)/price(y(h),ot),K{ot,y(h)}([gam(below),x,gam(above)]),ot,y(h),[gam(below),x,gam(above)])/g(cons(h,ot)/price(y(h),ot),K{ot,y(h)}([gam(below),x,gam(above)]),ot,y(h),[gam(below),x,gam(above)]));
+            if gam(ot)~=0 && isnan(funfun(gam(ot))) == 0
+                %display(gam(ot));
+                [gam(ot),fv,ef] = fmincon(funfun,gam(ot),[],[],[],[],0,[],[],options);         
+                display([gam(ot),fv,ef]);
+                if isreal(gam(ot)) == 0;
+                    flag = 1;
+                    lik(ot) = -inf;
+                else
+                    gl = gam(2:end);
+                    lik(ot) = log(v{type(h)}(ot))+sum((gl>0).*log(1-zm')) + sum((gl==0).*log(zm'))+sum(log(max(lognpdf(gl(gl>0)',mu(gl>0),sig(gl>0)),1e-12)));               
                 end
-        else
+             else
+                %if gam(ot)<0 || isnan(gam(ot)) == 1
+                    %weirdo = weirdo + 1;
+                    %gam(ot) = 1e-12;
+                    %gam(ot) = gamcd(ot);
+                    flag(ot) = 1;
+                    lik(k) = -inf;
+            end
+       % else
 %         gam = gamcd;
 %         hat = (cons(h,ot)/price(y(h),ot)*((1-alp)*price(y(h),ot)/(expend(h)-cons(h,ot))-alp*g_p(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam)/g(cons(h,ot)/price(y(h),ot),K{ot,y(h)}(gam),ot,y(h),gam)))^(-1);        
 %         if hat < 0 || isnan(hat) == 1
@@ -66,16 +80,16 @@ for h = 1:size(expend,1)
     end
 lik(1) = -inf; %suppose you can't be obs type 1
 [addme,ob_type(h)] = max(lik);    
-if min(flag(2:end)) == 1
-    weirdo = weirdo + 1;
-end
+%if min(flag(2:end)) == 1
+%    weirdo = weirdo + 1;
+%end
 %if addme == -100000
 %    weirdo = weirdo + 1;
 %    ob_type(h) = -1;
 %end
 biglik = biglik +addme;  
 end
-
+%toc
 % ngam = zeros(29,size(expend,1)); %gams,household
 % for h = 1:size(expend,1)
 %     %display(h);
@@ -129,6 +143,6 @@ display(sig);
 display(ob_types);
 display(biglik);
 display(alp);
-display(weirdo)
+%display(weirdo)
 end
 
